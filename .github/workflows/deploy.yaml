@@ -1,0 +1,132 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+      - "ansible/**"
+      - ".github/workflows/deploy.yaml"
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  terraform-apply:
+    runs-on: ubuntu-latest
+    environment: prod
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: terraform
+
+    outputs:
+      k3s_main_ip: ${{ steps.tfout.outputs.k3s_main_ip }}
+      volume_device_hint: ${{ steps.tfout.outputs.volume_device_hint }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: 1.7.0
+
+      - name: Initialize Terraform
+        env:
+          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+        run: terraform init
+
+      - name: Apply Terraform Plan
+        env:
+          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+        run: terraform apply -var-file=envs/prod.tfvars -auto-approve
+
+      - name: Export Terraform outputs
+        id: tfout
+        run: |
+          set -euo pipefail
+          echo "k3s_master_ip=$(terraform output -raw k3s_master_ip)" >> "$GITHUB_OUTPUT"
+          echo "volume_device_hint=$(terraform output -raw volume_device_hint)" >> "$GITHUB_OUTPUT"
+
+  ansible-deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+    needs: terraform-apply
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: ansible
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Install Ansible + SSH Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible openssh-client
+
+      - name: Start ssh-agent and deploy key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          eval "$(ssh-agent -s)"
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          ssh-add - <<< "${SSH_PRIVATE_KEY}"
+
+      - name: Add droplet host key to known_hosts
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H "${K3S_MAIN_IP}" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Generate Ansible inventory
+        env:
+          k3s_main_ip: ${{ needs.terraform-apply.outputs.k3s_main_ip }}
+        run: |
+          set -euo pipefail
+          mkdir -p inventories/prod
+          cat > inventories/prod/hosts.ini <<EOF
+          [k3s_main]
+          k3s-main-01 ansible_host=${K3S_MAIN_IP} ansible_user=root
+          EOF
+          cat inventories/prod/hosts.ini
+
+      - name: Prepare Ansible Vault password
+        if: ${{ secrets.ANSIBLE_VAULT_PASSWORD != '' }}
+        run: |
+          set -euo pipefail
+          umask 077
+          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
+
+      - name: Run Ansible
+        run: |
+          set -euo pipefail
+          if [ -f .vault_pass ]; then
+            ansible-playbook \
+              -i inventories/prod/hosts.ini \
+              site.yaml \
+              --vault-password-file .vault_pass
+          else
+            ansible-playbook \
+              -i inventories/prod/hosts.ini \
+              site.yaml
+          fi
+
+      - name: Smoke check (placeholder)
+        run: |
+          set -euo pipefail
+          echo "Droplet IP: ${K3S_MAIN_IP}"
+          timeout 5 bash -c "echo ok"

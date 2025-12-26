@@ -1,0 +1,7 @@
+---
+- name: K3s-main baseline configuration
+  hosts: k3s_main
+  become: true
+
+  roles:
+    - storage
