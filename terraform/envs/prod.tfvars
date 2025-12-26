@@ -1,4 +1,3 @@
-do_token = "REPLACE_ME"
 project_name = "k3s-main"
 region = "fra1"
 droplet_size = "s-2vcpu-4gb"
