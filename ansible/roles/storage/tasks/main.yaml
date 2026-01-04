@@ -1,0 +1,58 @@
+---
+- name: Ensure disk tooling is installed
+  ansible.builtin.apt:
+    name:
+      - parted
+      - e2fsprogs
+    state: present
+    update_cache: true
+
+- name: Check if data disk exists
+  ansible.builtin.stat:
+    path: "{{ k3s_data_device }}"
+  register: storage_data_disk
+
+- name: Fail if data disk is missing
+  ansible.builtin.fail:
+    msg: "Data disk {{ k3s_data_device }} does not exist!"
+  when: not storage_data_disk.stat.exists
+
+- name: Create GPT partition (if absent)
+  parted:
+    device: "{{ k3s_data_device }}"
+    number: 1
+    label: gpt
+    state: present
+    part_start: 0%
+    part_end: 100%
+
+- name: Set partition fact
+  ansible.builtin.set_fact:
+    storage_k3s_data_partition: "{{ k3s_data_device }}-part1"
+
+- name: Create filesystem if none exists
+  filesystem:
+    dev: "{{ storage_k3s_data_partition }}"
+    fstype: "{{ k3s_data_fs_type }}"
+    opts: "-L {{ k3s_data_label }}"
+
+- name: Create mountpoint
+  ansible.builtin.file:
+    path: "{{ k3s_data_mountpoint }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure mount entry exists
+  ansible.builtin.mount:
+    path: "{{ k3s_data_mountpoint }}"
+    src: "LABEL={{ k3s_data_label }}"
+    fstype: "{{ k3s_data_fs_type }}"
+    opts: "defaults,noatime"
+    state: present
+
+- name: Mount data volume
+  ansible.builtin.mount:
+    path: "{{ k3s_data_mountpoint }}"
+    state: mounted

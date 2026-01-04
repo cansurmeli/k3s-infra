@@ -5,3 +5,8 @@
 
   roles:
     - storage
+    - user
+    - ssh_hardening
+    - firewall
+    - k3s
+    - validation

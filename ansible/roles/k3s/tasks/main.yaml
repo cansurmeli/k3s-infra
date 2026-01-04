@@ -1,0 +1,25 @@
+---
+- name: Create k3s data directory
+  ansible.builtin.file:
+    path: "{{ k3s_data_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download k3s install script
+  ansible.builtin.get_url:
+    url: "https://get.k3s.io"
+    dest: "/tmp/k3s_install.sh"
+    mode: "0755"
+
+- name: Install k3s (server) with FQDN TLS SAN and custom data dir
+  ansible.builtin.command: >
+    sh /tmp/k3s_install.sh
+    --write-kubeconfig-mode 644
+    --tls-san {{ k3s_fqdn }}
+  environment:
+    K3S_DATA_DIR: "{{ k3s_data_dir }}"
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+  args:
+    creates: /usr/local/bin/k3s
