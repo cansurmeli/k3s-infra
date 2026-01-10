@@ -51,7 +51,7 @@ jobs:
         id: tfout
         run: |
           set -euo pipefail
-          echo "k3s_master_ip=$(terraform output -raw k3s_master_ip)" >> "$GITHUB_OUTPUT"
+          echo "k3s_main_ip=$(terraform output -raw k3s_main_ip)" >> "$GITHUB_OUTPUT"
           echo "volume_device_hint=$(terraform output -raw volume_device_hint)" >> "$GITHUB_OUTPUT"
 
   ansible-deploy:
@@ -106,11 +106,14 @@ jobs:
           cat inventories/prod/hosts.ini
 
       - name: Prepare Ansible Vault password
-        if: ${{ secrets.ANSIBLE_VAULT_PASSWORD != '' }}
+        env:
+          ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
         run: |
           set -euo pipefail
           umask 077
-          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
+          if [ -n "${ANSIBLE_VAULT_PASSWORD}" ]; then
+            echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
+          fi
 
       - name: Run Ansible
         run: |
