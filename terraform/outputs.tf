@@ -9,5 +9,5 @@ output "k3s_main_name" {
 }
 output "volume_device_hint" {
     description = "Linux device path hint (by-id) for the data volume"
-    value = "/dev/disk/by-id/scsi-0DO_Volume_${digitalocean_volume.k3s_volume.name}"
+    value = "/dev/disk/by-id/scsi-0DO_Volume_${digitalocean_volume.k3s_data.name}"
 }
