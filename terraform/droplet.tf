@@ -3,7 +3,7 @@ resource "digitalocean_droplet" "k3s_main" {
     region = var.region
     size = var.droplet_size
     image = "debian-12-x64"
-    ssh_keys = var.ssh_key_ids
+    ssh_keys = var.ssh_key_fingerprints
     backups = false
     ipv6 = true
     monitoring = true

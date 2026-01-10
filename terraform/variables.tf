@@ -27,10 +27,9 @@ variable "volume_size_gb" {
     description = "Size of the block storage volume in GB"
 }
 
-variable "ssh_key_ids" {
-    type = list(number)
-    default = []
-    description = "Existing DO SSH key IDs"
+variable "ssh_key_fingerprints" {
+    type        = list(string)
+    description = "DigitalOcean SSH key fingerprints to inject into the droplet"
 }
 
 variable "ssh_port" {
