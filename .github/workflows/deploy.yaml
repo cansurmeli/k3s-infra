@@ -86,6 +86,8 @@ jobs:
           ssh-add - <<< "${SSH_PRIVATE_KEY}"
 
       - name: Add droplet host key to known_hosts
+        env:
+          K3S_MAIN_IP: ${{ needs.terraform-apply.outputs.k3s_main_ip }}
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
