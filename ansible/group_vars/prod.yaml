@@ -8,6 +8,8 @@ admin_groups:
 ssh_port: 53971
 ssh_allow_root_login: false
 
+ansible_user: "ubuntu"
+
 # STORAGE
 # Stable by-id device path from Terraform output
 k3s_data_device: "/dev/disk/by-id/scsi-0DO_Volume_k3s-main-data"
