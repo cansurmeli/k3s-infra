@@ -1,5 +1,5 @@
 resource "digitalocean_firewall" "k3s_main_fw" {
-    name = "${var.project_name}-fw"
+    name = "${var.project_name}-fw-${digitalocean_droplet.k3s_main.id}"
 
     droplet_ids = [
         digitalocean_droplet.k3s_main.id
