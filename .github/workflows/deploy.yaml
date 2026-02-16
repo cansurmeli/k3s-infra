@@ -90,6 +90,19 @@ jobs:
           K3S_MAIN_IP: ${{ needs.terraform-apply.outputs.k3s_main_ip }}
         run: |
           set -euo pipefail
+          echo "Waiting for SSH on ${K3S_MAIN_IP} to become available..."
+          for i in $(seq 1 60); do
+            if nc -zv "${K3S_MAIN_IP}" 22; then
+              echo "SSH is available!"
+              break
+            fi
+            sleep 2
+            if [ "$i" -eq 60 ]; then
+              echo "SSH did not become available in time. Exiting."
+              exit 1
+            fi
+          done
+
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           ssh-keyscan -H "${K3S_MAIN_IP}" >> ~/.ssh/known_hosts
