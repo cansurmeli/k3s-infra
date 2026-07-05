@@ -79,20 +79,26 @@ jobs:
         run: |
           set -euo pipefail
           eval "$(ssh-agent -s)"
+          echo "SSH_AUTH_SOCK=${SSH_AUTH_SOCK}" >> "$GITHUB_ENV"
+          echo "SSH_AGENT_PID=${SSH_AGENT_PID}" >> "$GITHUB_ENV"
 
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
           ssh-add - <<< "${SSH_PRIVATE_KEY}"
 
-      - name: Add droplet host key to known_hosts
+      - name: Resolve SSH target and trust host key
+        id: ssh_target
         env:
           K3S_MAIN_IP: ${{ needs.terraform-apply.outputs.k3s_main_ip }}
         run: |
           set -euo pipefail
+          SSH_PORT="$(awk -F': *' '/^ssh_port:/ {gsub(/"/, "", $2); print $2}' group_vars/prod.yaml)"
+          ADMIN_USER="$(awk -F': *' '/^admin_user:/ {gsub(/"/, "", $2); print $2}' group_vars/prod.yaml)"
+
           echo "Waiting for SSH on ${K3S_MAIN_IP} to become available..."
           for i in $(seq 1 60); do
-            if nc -zv "${K3S_MAIN_IP}" 22; then
+            if nc -z "${K3S_MAIN_IP}" 22 || nc -z "${K3S_MAIN_IP}" "${SSH_PORT}"; then
               echo "SSH is available!"
               break
             fi
@@ -105,18 +111,35 @@ jobs:
 
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          ssh-keyscan -H "${K3S_MAIN_IP}" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${K3S_MAIN_IP}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -H -p "${SSH_PORT}" "${K3S_MAIN_IP}" >> ~/.ssh/known_hosts 2>/dev/null || true
           chmod 600 ~/.ssh/known_hosts
+
+          if ssh -o BatchMode=yes -p 22 "root@${K3S_MAIN_IP}" true; then
+            echo "ansible_user=root" >> "$GITHUB_OUTPUT"
+            echo "ansible_port=22" >> "$GITHUB_OUTPUT"
+          elif ssh -o BatchMode=yes -p "${SSH_PORT}" "${ADMIN_USER}@${K3S_MAIN_IP}" true; then
+            echo "ansible_user=${ADMIN_USER}" >> "$GITHUB_OUTPUT"
+            echo "ansible_port=${SSH_PORT}" >> "$GITHUB_OUTPUT"
+          else
+            echo "Could not authenticate to ${K3S_MAIN_IP} as root:22 or ${ADMIN_USER}:${SSH_PORT}."
+            exit 1
+          fi
 
       - name: Generate Ansible inventory
         env:
           K3S_MAIN_IP: ${{ needs.terraform-apply.outputs.k3s_main_ip }}
+          ANSIBLE_USER: ${{ steps.ssh_target.outputs.ansible_user }}
+          ANSIBLE_PORT: ${{ steps.ssh_target.outputs.ansible_port }}
         run: |
           set -euo pipefail
           mkdir -p inventories/prod
           cat > inventories/prod/hosts.ini <<EOF
           [k3s_main]
-          k3s-main-01 ansible_host=${K3S_MAIN_IP} ansible_user=root
+          k3s-main-01 ansible_host=${K3S_MAIN_IP} ansible_user=${ANSIBLE_USER} ansible_port=${ANSIBLE_PORT}
+
+          [prod:children]
+          k3s_main
           EOF
           cat inventories/prod/hosts.ini
 
@@ -145,6 +168,8 @@ jobs:
           fi
 
       - name: Smoke check (placeholder)
+        env:
+          K3S_MAIN_IP: ${{ needs.terraform-apply.outputs.k3s_main_ip }}
         run: |
           set -euo pipefail
           echo "Droplet IP: ${K3S_MAIN_IP}"

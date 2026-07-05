@@ -36,7 +36,10 @@ ansible-playbook -i inventories/prod/hosts.ini site.yaml
 ### Inventory Format
 ```
 [k3s_main]
-k3s-main-01 ansible_host=<DROPLET_IP> ansible_user=root
+k3s-main-01 ansible_host=<DROPLET_IP> ansible_user=<SSH_USER> ansible_port=<SSH_PORT>
+
+[prod:children]
+k3s_main
 ```
 
 ## Project Conventions
@@ -51,7 +54,7 @@ k3s-main-01 ansible_host=<DROPLET_IP> ansible_user=root
 - K3s data directory: `/srv/k3s-data/k3s`
 
 ### Security
-- SSH access restricted to `allowed_ip_cidrs` (default: 0.0.0.0/0 for development)
+- SSH access restricted to `allowed_ip_cidrs` (default: 0.0.0.0/0 for development) on bootstrap port 22 and the configured custom SSH port
 - HTTP/HTTPS open to world
 - Admin user created with sudo privileges, no password required
 

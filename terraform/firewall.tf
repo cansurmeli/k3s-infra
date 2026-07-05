@@ -7,7 +7,13 @@ resource "digitalocean_firewall" "k3s_main_fw" {
     inbound_rule {
         protocol = "tcp"
         port_range = "22"
-        source_addresses = ["0.0.0.0/0", "::/0"]
+        source_addresses = var.allowed_ip_cidrs
+    }
+
+    inbound_rule {
+        protocol = "tcp"
+        port_range = tostring(var.ssh_port)
+        source_addresses = var.allowed_ip_cidrs
     }
 
     inbound_rule {
