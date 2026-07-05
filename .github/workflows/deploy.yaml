@@ -7,7 +7,9 @@ on:
     paths:
       - "terraform/**"
       - "ansible/**"
+      - ".github/scripts/**"
       - ".github/workflows/deploy.yaml"
+      - ".github/workflows/import-terraform-state.yaml"
   workflow_dispatch:
 
 concurrency:
@@ -15,9 +17,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  import-terraform-state:
+    uses: ./.github/workflows/import-terraform-state.yaml
+    with:
+      allow_empty_terraform_state: ${{ vars.ALLOW_EMPTY_TERRAFORM_STATE || 'false' }}
+      project_name: k3s-main
+      tf_import_droplet_id: ${{ vars.TF_IMPORT_DROPLET_ID }}
+      tf_import_firewall_id: ${{ vars.TF_IMPORT_FIREWALL_ID }}
+      tf_import_volume_attachment_id: ${{ vars.TF_IMPORT_VOLUME_ATTACHMENT_ID }}
+      tf_import_volume_id: ${{ vars.TF_IMPORT_VOLUME_ID }}
+    secrets:
+      do_spaces_access_key_id: ${{ secrets.DO_SPACES_ACCESS_KEY_ID }}
+      do_spaces_secret_access_key: ${{ secrets.DO_SPACES_SECRET_ACCESS_KEY }}
+      do_token: ${{ secrets.DO_TOKEN }}
+      tf_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
+
   terraform-apply:
     runs-on: ubuntu-latest
     environment: prod
+    needs: import-terraform-state
 
     defaults:
       run:
@@ -43,32 +61,16 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.DO_SPACES_SECRET_ACCESS_KEY }}
           TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
           TF_STATE_REGION: ${{ vars.TF_STATE_REGION || 'fra1' }}
-          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
-        run: |
-          set -euo pipefail
-          cat > backend.hcl <<EOF
-          bucket = "${TF_STATE_BUCKET}"
-          key = "k3s-infra/prod/terraform.tfstate"
-          region = "${TF_STATE_REGION}"
-          endpoints = {
-            s3 = "https://${TF_STATE_REGION}.digitaloceanspaces.com"
-          }
-          skip_credentials_validation = true
-          skip_requesting_account_id = true
-          skip_metadata_api_check = true
-          skip_region_validation = true
-          skip_s3_checksum = true
-          EOF
-          terraform init -backend-config=backend.hcl
+        run: bash ../.github/scripts/terraform-init.sh
 
-      - name: Refuse apply with empty Terraform state
+      - name: Refuse apply if Terraform state is still empty
         env:
           ALLOW_EMPTY_TERRAFORM_STATE: ${{ vars.ALLOW_EMPTY_TERRAFORM_STATE || 'false' }}
         run: |
           set -euo pipefail
           if ! terraform state list | grep -q .; then
             echo "Terraform state is empty."
-            echo "Run the Import Terraform State workflow before Deploy, or set ALLOW_EMPTY_TERRAFORM_STATE=true for a first bootstrap."
+            echo "Set ALLOW_EMPTY_TERRAFORM_STATE=true only for a first bootstrap into an empty DigitalOcean project."
             if [ "${ALLOW_EMPTY_TERRAFORM_STATE}" != "true" ]; then
               exit 1
             fi

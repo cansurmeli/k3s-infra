@@ -1,24 +1,47 @@
 name: Import Terraform State
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      droplet_id:
+      allow_empty_terraform_state:
+        description: "Allow Terraform to create resources when state is empty"
+        required: false
+        type: string
+        default: "false"
+      project_name:
+        description: "Project/resource name prefix"
+        required: false
+        type: string
+        default: "k3s-main"
+      tf_import_droplet_id:
         description: "Existing DigitalOcean Droplet ID for k3s-main"
-        required: true
-      volume_id:
+        required: false
+        type: string
+        default: ""
+      tf_import_volume_id:
         description: "Existing DigitalOcean Volume ID for k3s-main-data-01"
-        required: true
-      firewall_id:
+        required: false
+        type: string
+        default: ""
+      tf_import_firewall_id:
         description: "Existing DigitalOcean Firewall ID for the real k3s-main firewall"
-        required: true
-      volume_attachment_id:
+        required: false
+        type: string
+        default: ""
+      tf_import_volume_attachment_id:
         description: "Existing volume attachment import ID. Usually <droplet_id>,<volume_id>; override if the provider reports a different ID."
         required: false
-
-concurrency:
-  group: terraform-state-prod
-  cancel-in-progress: false
+        type: string
+        default: ""
+    secrets:
+      do_spaces_access_key_id:
+        required: true
+      do_spaces_secret_access_key:
+        required: true
+      do_token:
+        required: true
+      tf_state_bucket:
+        required: true
 
 jobs:
   import:
@@ -41,57 +64,24 @@ jobs:
 
       - name: Initialize Terraform
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.DO_SPACES_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.DO_SPACES_SECRET_ACCESS_KEY }}
-          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.do_spaces_access_key_id }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.do_spaces_secret_access_key }}
+          TF_STATE_BUCKET: ${{ secrets.tf_state_bucket }}
           TF_STATE_REGION: ${{ vars.TF_STATE_REGION || 'fra1' }}
-          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
-        run: |
-          set -euo pipefail
-          cat > backend.hcl <<EOF
-          bucket = "${TF_STATE_BUCKET}"
-          key = "k3s-infra/prod/terraform.tfstate"
-          region = "${TF_STATE_REGION}"
-          endpoints = {
-            s3 = "https://${TF_STATE_REGION}.digitaloceanspaces.com"
-          }
-          skip_credentials_validation = true
-          skip_requesting_account_id = true
-          skip_metadata_api_check = true
-          skip_region_validation = true
-          skip_s3_checksum = true
-          EOF
-          terraform init -backend-config=backend.hcl
+        run: bash ../.github/scripts/terraform-init.sh
 
       - name: Import existing resources
         env:
-          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
-          DROPLET_ID: ${{ inputs.droplet_id }}
-          VOLUME_ID: ${{ inputs.volume_id }}
-          FIREWALL_ID: ${{ inputs.firewall_id }}
-          VOLUME_ATTACHMENT_ID: ${{ inputs.volume_attachment_id }}
-        run: |
-          set -euo pipefail
-          if [ -z "${VOLUME_ATTACHMENT_ID}" ]; then
-            VOLUME_ATTACHMENT_ID="${DROPLET_ID},${VOLUME_ID}"
-          fi
-
-          import_if_missing() {
-            local address="$1"
-            local id="$2"
-            if terraform state show "${address}" >/dev/null 2>&1; then
-              echo "${address} already exists in state"
-            else
-              terraform import -var-file=envs/prod.tfvars "${address}" "${id}"
-            fi
-          }
-
-          import_if_missing digitalocean_droplet.k3s_main "${DROPLET_ID}"
-          import_if_missing digitalocean_volume.k3s_data "${VOLUME_ID}"
-          import_if_missing digitalocean_firewall.k3s_main_fw "${FIREWALL_ID}"
-          import_if_missing digitalocean_volume_attachment.k3s_data_attach "${VOLUME_ATTACHMENT_ID}"
+          ALLOW_EMPTY_TERRAFORM_STATE: ${{ inputs.allow_empty_terraform_state }}
+          PROJECT_NAME: ${{ inputs.project_name }}
+          TF_IMPORT_DROPLET_ID: ${{ inputs.tf_import_droplet_id }}
+          TF_IMPORT_FIREWALL_ID: ${{ inputs.tf_import_firewall_id }}
+          TF_IMPORT_VOLUME_ATTACHMENT_ID: ${{ inputs.tf_import_volume_attachment_id }}
+          TF_IMPORT_VOLUME_ID: ${{ inputs.tf_import_volume_id }}
+          TF_VAR_do_token: ${{ secrets.do_token }}
+        run: bash ../.github/scripts/terraform-import-existing.sh
 
       - name: Verify imported state
         env:
-          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+          TF_VAR_do_token: ${{ secrets.do_token }}
         run: terraform plan -var-file=envs/prod.tfvars
