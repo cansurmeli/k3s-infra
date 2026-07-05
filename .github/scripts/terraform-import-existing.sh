@@ -55,8 +55,7 @@ import_if_missing() {
 
 if terraform state show digitalocean_droplet.k3s_main >/dev/null 2>&1 \
     && terraform state show digitalocean_volume.k3s_data >/dev/null 2>&1 \
-    && terraform state show digitalocean_firewall.k3s_main_fw >/dev/null 2>&1 \
-    && terraform state show digitalocean_volume_attachment.k3s_data_attach >/dev/null 2>&1; then
+    && terraform state show digitalocean_firewall.k3s_main_fw >/dev/null 2>&1; then
     echo "All managed DigitalOcean resources already exist in Terraform state."
     exit 0
 fi
@@ -71,7 +70,6 @@ echo "Terraform state is empty or incomplete; attempting to import existing Digi
 droplet_id="${TF_IMPORT_DROPLET_ID:-}"
 volume_id="${TF_IMPORT_VOLUME_ID:-}"
 firewall_id="${TF_IMPORT_FIREWALL_ID:-}"
-volume_attachment_id="${TF_IMPORT_VOLUME_ATTACHMENT_ID:-}"
 
 if [ -z "${droplet_id}" ]; then
     droplets_payload="$(api_get "droplets?tag_name=${PROJECT_NAME}")"
@@ -88,11 +86,6 @@ if [ -z "${firewall_id}" ]; then
     firewall_id="$(discover_single "Firewall attached to Droplet ${droplet_id}" ".firewalls[] | select((.name | startswith(\"${FIREWALL_NAME_PREFIX}\")) and (.droplet_ids | index(${droplet_id}))) | .id" "${firewalls_payload}")"
 fi
 
-if [ -z "${volume_attachment_id}" ]; then
-    volume_attachment_id="${droplet_id},${volume_id}"
-fi
-
 import_if_missing digitalocean_droplet.k3s_main "${droplet_id}"
 import_if_missing digitalocean_volume.k3s_data "${volume_id}"
 import_if_missing digitalocean_firewall.k3s_main_fw "${firewall_id}"
-import_if_missing digitalocean_volume_attachment.k3s_data_attach "${volume_attachment_id}"

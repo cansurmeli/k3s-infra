@@ -28,11 +28,6 @@ on:
         required: false
         type: string
         default: ""
-      tf_import_volume_attachment_id:
-        description: "Existing volume attachment import ID. Usually <droplet_id>,<volume_id>; override if the provider reports a different ID."
-        required: false
-        type: string
-        default: ""
     secrets:
       do_spaces_access_key_id:
         required: true
@@ -82,7 +77,6 @@ jobs:
           PROJECT_NAME: ${{ inputs.project_name }}
           TF_IMPORT_DROPLET_ID: ${{ inputs.tf_import_droplet_id }}
           TF_IMPORT_FIREWALL_ID: ${{ inputs.tf_import_firewall_id }}
-          TF_IMPORT_VOLUME_ATTACHMENT_ID: ${{ inputs.tf_import_volume_attachment_id }}
           TF_IMPORT_VOLUME_ID: ${{ inputs.tf_import_volume_id }}
           TF_VAR_do_token: ${{ secrets.do_token }}
         run: bash ../.github/scripts/terraform-import-existing.sh

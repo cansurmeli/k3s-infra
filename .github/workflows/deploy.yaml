@@ -24,7 +24,6 @@ jobs:
       project_name: k3s-main
       tf_import_droplet_id: ${{ vars.TF_IMPORT_DROPLET_ID }}
       tf_import_firewall_id: ${{ vars.TF_IMPORT_FIREWALL_ID }}
-      tf_import_volume_attachment_id: ${{ vars.TF_IMPORT_VOLUME_ATTACHMENT_ID }}
       tf_import_volume_id: ${{ vars.TF_IMPORT_VOLUME_ID }}
     secrets:
       do_spaces_access_key_id: ${{ secrets.DO_SPACES_ACCESS_KEY_ID }}
