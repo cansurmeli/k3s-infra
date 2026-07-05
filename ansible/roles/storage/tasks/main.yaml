@@ -52,15 +52,10 @@
     group: root
     mode: "0755"
 
-- name: Ensure mount entry exists
+- name: Mount data volume
   ansible.builtin.mount:
     path: "{{ k3s_data_mountpoint }}"
     src: "LABEL={{ k3s_data_label }}"
     fstype: "{{ k3s_data_fs_type }}"
     opts: "defaults,noatime"
-    state: present
-
-- name: Mount data volume
-  ansible.builtin.mount:
-    path: "{{ k3s_data_mountpoint }}"
     state: mounted
