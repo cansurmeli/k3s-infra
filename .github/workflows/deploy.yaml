@@ -154,19 +154,21 @@ jobs:
           fi
 
       - name: Run Ansible
+        env:
+          VOLUME_DEVICE_HINT: ${{ needs.terraform-apply.outputs.volume_device_hint }}
         run: |
           set -euo pipefail
+          ansible_args=(
+            -i inventories/prod/hosts.ini
+            site.yaml
+            --extra-vars "k3s_data_device=${VOLUME_DEVICE_HINT}"
+          )
+
           if [ -f .vault_pass ]; then
-            ansible-playbook \
-              -i inventories/prod/hosts.ini \
-              site.yaml \
-              --vault-password-file .vault_pass
-          else
-            ansible-playbook \
-              -i inventories/prod/hosts.ini \
-              site.yaml
+            ansible_args+=(--vault-password-file .vault_pass)
           fi
 
+          ansible-playbook "${ansible_args[@]}"
       - name: Smoke check (placeholder)
         env:
           K3S_MAIN_IP: ${{ needs.terraform-apply.outputs.k3s_main_ip }}

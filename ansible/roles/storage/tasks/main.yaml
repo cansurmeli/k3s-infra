@@ -7,10 +7,18 @@
     state: present
     update_cache: true
 
-- name: Check if data disk exists
+- name: Wait for udev to settle
+  ansible.builtin.command: udevadm settle
+  changed_when: false
+  failed_when: false
+
+- name: Wait for data disk to appear
   ansible.builtin.stat:
     path: "{{ k3s_data_device }}"
   register: storage_data_disk
+  retries: 30
+  delay: 2
+  until: storage_data_disk.stat.exists
 
 - name: Fail if data disk is missing
   ansible.builtin.fail:

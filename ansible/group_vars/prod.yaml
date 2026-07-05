@@ -9,10 +9,11 @@ ssh_port: 53971
 ssh_allow_root_login: false
 
 ansible_user: "ubuntu"
+ansible_python_interpreter: "/usr/bin/python3"
 
 # STORAGE
 # Stable by-id device path from Terraform output
-k3s_data_device: "/dev/disk/by-id/scsi-0DO_Volume_k3s-main-data"
+k3s_data_device: "/dev/disk/by-id/scsi-0DO_Volume_k3s-main-data-01"
 # Where persistent data will live
 k3s_data_mountpoint: "/srv/k3s-data"
 # Filesystem settings

@@ -49,7 +49,7 @@ k3s_main
 - Tags: `[project_name, "k3s", "main"]` for droplet, `[project_name, "k3s-data"]` for volume
 
 ### Storage Setup
-- Volume device path: `/dev/disk/by-id/scsi-0DO_Volume_{project_name}-data`
+- Volume device path: `/dev/disk/by-id/scsi-0DO_Volume_{project_name}-data-01`
 - Mount point: `/srv/k3s-data`
 - K3s data directory: `/srv/k3s-data/k3s`
 
