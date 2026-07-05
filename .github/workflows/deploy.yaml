@@ -87,6 +87,17 @@ jobs:
           TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
         run: terraform apply -var-file=envs/prod.tfvars -auto-approve
 
+      - name: Ensure data volume is attached
+        env:
+          TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+        run: |
+          set -euo pipefail
+          DROPLET_ID="$(terraform output -raw k3s_main_id)"
+          VOLUME_ID="$(terraform output -raw volume_id)"
+          VOLUME_REGION="$(terraform output -raw volume_region)"
+          export DROPLET_ID VOLUME_ID VOLUME_REGION
+          bash ../.github/scripts/ensure-volume-attached.sh
+
       - name: Export Terraform outputs
         id: tfout
         run: |
