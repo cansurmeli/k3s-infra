@@ -13,6 +13,10 @@ on:
         required: false
         type: string
         default: "k3s-main"
+      tf_state_bucket:
+        description: "DigitalOcean Spaces bucket for Terraform state"
+        required: true
+        type: string
       tf_import_droplet_id:
         description: "Existing DigitalOcean Droplet ID for k3s-main"
         required: false
@@ -40,8 +44,6 @@ on:
         required: true
       do_token:
         required: true
-      tf_state_bucket:
-        required: true
 
 jobs:
   import:
@@ -62,11 +64,19 @@ jobs:
         with:
           terraform_version: 1.7.0
 
+      - name: Ensure Terraform state Space exists
+        env:
+          DO_SPACES_ACCESS_KEY_ID: ${{ secrets.do_spaces_access_key_id }}
+          DO_SPACES_SECRET_ACCESS_KEY: ${{ secrets.do_spaces_secret_access_key }}
+          TF_STATE_BUCKET: ${{ inputs.tf_state_bucket }}
+          TF_STATE_REGION: ${{ vars.TF_STATE_REGION || 'fra1' }}
+        run: bash ../.github/scripts/ensure-spaces-bucket.sh
+
       - name: Initialize Terraform
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.do_spaces_access_key_id }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.do_spaces_secret_access_key }}
-          TF_STATE_BUCKET: ${{ secrets.tf_state_bucket }}
+          DO_SPACES_ACCESS_KEY_ID: ${{ secrets.do_spaces_access_key_id }}
+          DO_SPACES_SECRET_ACCESS_KEY: ${{ secrets.do_spaces_secret_access_key }}
+          TF_STATE_BUCKET: ${{ inputs.tf_state_bucket }}
           TF_STATE_REGION: ${{ vars.TF_STATE_REGION || 'fra1' }}
         run: bash ../.github/scripts/terraform-init.sh
 

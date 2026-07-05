@@ -2,7 +2,7 @@
 set -euo pipefail
 
 missing=()
-for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY TF_STATE_BUCKET; do
+for name in DO_SPACES_ACCESS_KEY_ID DO_SPACES_SECRET_ACCESS_KEY TF_STATE_BUCKET; do
     if [ -z "${!name:-}" ]; then
         missing+=("${name}")
     fi
@@ -21,6 +21,8 @@ cat > backend.hcl <<EOF
 bucket = "${TF_STATE_BUCKET}"
 key = "${TF_STATE_KEY}"
 region = "${TF_STATE_REGION}"
+access_key = "${DO_SPACES_ACCESS_KEY_ID}"
+secret_key = "${DO_SPACES_SECRET_ACCESS_KEY}"
 endpoints = {
   s3 = "https://${TF_STATE_REGION}.digitaloceanspaces.com"
 }

@@ -32,11 +32,19 @@ jobs:
         with:
           terraform_version: 1.7.0
 
+      - name: Ensure Terraform state Space exists
+        env:
+          DO_SPACES_ACCESS_KEY_ID: ${{ secrets.DO_SPACES_ACCESS_KEY_ID }}
+          DO_SPACES_SECRET_ACCESS_KEY: ${{ secrets.DO_SPACES_SECRET_ACCESS_KEY }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          TF_STATE_REGION: ${{ vars.TF_STATE_REGION || 'fra1' }}
+        run: bash ../.github/scripts/ensure-spaces-bucket.sh
+
       - name: Initialize Terraform
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.DO_SPACES_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.DO_SPACES_SECRET_ACCESS_KEY }}
-          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          DO_SPACES_ACCESS_KEY_ID: ${{ secrets.DO_SPACES_ACCESS_KEY_ID }}
+          DO_SPACES_SECRET_ACCESS_KEY: ${{ secrets.DO_SPACES_SECRET_ACCESS_KEY }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
           TF_STATE_REGION: ${{ vars.TF_STATE_REGION || 'fra1' }}
         run: bash ../.github/scripts/terraform-init.sh
 

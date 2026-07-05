@@ -3,12 +3,10 @@
 ## Terraform State
 
 Terraform uses a DigitalOcean Spaces bucket through the S3-compatible backend.
-Create the bucket before running the workflows, then configure these GitHub
-environment secrets for `prod`:
+The workflows create the Space automatically if it does not exist. Configure
+these GitHub environment variables for `prod`:
 
 - `TF_STATE_BUCKET`: Spaces bucket name for Terraform state
-- `DO_SPACES_ACCESS_KEY_ID`: Spaces access key
-- `DO_SPACES_SECRET_ACCESS_KEY`: Spaces secret key
 
 Optional GitHub environment variable:
 
@@ -16,6 +14,11 @@ Optional GitHub environment variable:
 - `ALLOW_EMPTY_TERRAFORM_STATE`: set to `true` only for a first bootstrap into
   an empty DigitalOcean project; leave unset/false when importing existing
   resources
+
+Configure these GitHub environment secrets for `prod`:
+
+- `DO_SPACES_ACCESS_KEY_ID`: Spaces access key
+- `DO_SPACES_SECRET_ACCESS_KEY`: Spaces secret key
 
 The state key is:
 
