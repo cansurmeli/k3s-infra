@@ -17,7 +17,7 @@
   ansible.builtin.command: >
     sh /tmp/k3s_install.sh
     --write-kubeconfig-mode 644
-    --tls-san {{ k3s_fqdn }}
+    --tls-san {{ k3s_fqdn | default(ansible_host) }}
   environment:
     K3S_DATA_DIR: "{{ k3s_data_dir }}"
     INSTALL_K3S_VERSION: "{{ k3s_version }}"

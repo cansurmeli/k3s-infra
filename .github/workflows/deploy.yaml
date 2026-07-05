@@ -86,6 +86,7 @@ jobs:
           chmod 700 ~/.ssh
 
           ssh-add - <<< "${SSH_PRIVATE_KEY}"
+          echo "ADMIN_AUTHORIZED_KEY=$(ssh-add -L | head -n 1)" >> "$GITHUB_ENV"
 
       - name: Resolve SSH target and trust host key
         id: ssh_target
@@ -155,6 +156,7 @@ jobs:
 
       - name: Run Ansible
         env:
+          ADMIN_AUTHORIZED_KEY: ${{ env.ADMIN_AUTHORIZED_KEY }}
           VOLUME_DEVICE_HINT: ${{ needs.terraform-apply.outputs.volume_device_hint }}
         run: |
           set -euo pipefail

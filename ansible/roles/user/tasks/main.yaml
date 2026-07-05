@@ -13,3 +13,10 @@
     dest: "/etc/sudoers.d/{{ admin_user }}"
     content: "{{ admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
     mode: "0440"
+
+- name: Allow admin SSH access with deploy key
+  ansible.posix.authorized_key:
+    user: "{{ admin_user }}"
+    key: "{{ admin_authorized_key | default(lookup('env', 'ADMIN_AUTHORIZED_KEY'), true) }}"
+    state: present
+  when: (admin_authorized_key | default(lookup('env', 'ADMIN_AUTHORIZED_KEY'), true) | length) > 0

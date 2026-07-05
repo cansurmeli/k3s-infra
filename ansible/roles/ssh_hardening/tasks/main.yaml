@@ -16,7 +16,7 @@
 - name: Harden sshd_config
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
-    regexp: "^\\s*{{ item.ket }}\\b"
+    regexp: "^\\s*{{ item.key }}\\b"
     line: "{{ item.key }} {{ item.value }}"
     state: present
   loop:
