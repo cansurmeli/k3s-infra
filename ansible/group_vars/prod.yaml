@@ -21,6 +21,6 @@ k3s_data_fs_type: "ext4"
 k3s_data_label: "K3SDATA"
 
 # K3S
-k3s_version: "v1.29.3+k3s1"
+k3s_version: "v1.36.2+k3s1"
 k3s_install_dir: "/usr/local/bin"
 k3s_data_dir: "/srv/k3s-data/k3s"
